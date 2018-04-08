@@ -24,12 +24,18 @@ A summary done on the data main data yields that some of the fields may not be n
 
 
 ```{r EDA}
-# Load Library 
-library("lattice")
+
+library(pROC)
+library(randomForest)
+library(ggplot2)
+library(reshape2)
 
 # Load Data
-attData <- read.csv("CaseStudy2data.csv")
-summary(attData)
+df <- read.csv("CaseStudy2data.csv")
+summary(df)
+ggplot(data = melt(df), mapping = aes(x = value)) + geom_histogram(bins = 15) + facet_wrap(~variable, scales = 'free')
+
+
 ```
 
 Also, the data was scanned for 'NA' values. This scanned did not show any 'NA' values.
