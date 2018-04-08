@@ -23,17 +23,36 @@ A summary done on the data main data yields that some of the fields may not be n
   StandardHours: All records show 80 hours a week.
 
 
-```{r EDA}
 
+
+
+```{r EDA}
 library(pROC)
 library(randomForest)
 library(ggplot2)
 library(reshape2)
-
 # Load Data
 df <- read.csv("CaseStudy2data.csv")
+
+
+dfCat <- df[,names(base::Filter(is.factor,df))]
+
+dfCon <- df[,c("Attrition",names(base::Filter(is.integer,df)))]
+head(dfCat)
+
+
 summary(df)
-ggplot(data = melt(df), mapping = aes(x = value)) + geom_histogram(bins = 15) + facet_wrap(~variable, scales = 'free')
+ggplot(data = melt(dfCat, id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(stat="count") + facet_grid(Attrition~variable, scales = 'free') + ggtitle("Histograms for Categorical Variables by Attrition") + theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
+
+ggplot(data = melt(dfCon[,1:6], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
+
+ggplot(data = melt(dfCon[,c(1,7:11)], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
+
+ggplot(data = melt(dfCon[,c(1,12:16)], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
+
+ggplot(data = melt(dfCon[,c(1,17:21)], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
+
+ggplot(data = melt(dfCon[,c(1,22:27)], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
 
 
 ```
@@ -41,7 +60,7 @@ ggplot(data = melt(df), mapping = aes(x = value)) + geom_histogram(bins = 15) + 
 Also, the data was scanned for 'NA' values. This scanned did not show any 'NA' values.
 ```{r NA_Scan}
 # NA per Field
-NACount <- sapply(attData,function(x) sum(is.na(x)))
+NACount <- sapply(df,function(x) sum(is.na(x)))
 NACount <- as.data.frame(NACount)
 colnames(NACount)=c("CountOfNAs")
 NACount
