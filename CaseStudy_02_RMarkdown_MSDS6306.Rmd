@@ -1,0 +1,63 @@
+---
+title: "6306 Case Study 2 - "
+author: "Andrew Walch, Christopher Morgan, Luke Pierce, Eduardo Cantu Medellin"
+date: "April 7, 2018"
+output: 
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+## Exploratory Data Analysis
+
+
+A summary done on the data main data yields that some of the fields may not be needed:
+  EmployeeCount: This shows 1 for all of them
+  EmployeeNumber: This has to do with a random number
+  Over18: All of them are over 18
+  StandardHours: All records show 80 hours a week.
+
+
+```{r EDA}
+# Load Library 
+library("lattice")
+
+# Load Data
+attData <- read.csv("CaseStudy2data.csv")
+summary(attData)
+```
+
+Also, the data was scanned for 'NA' values. This scanned did not show any 'NA' values.
+```{r NA_Scan}
+# NA per Field
+NACount <- sapply(attData,function(x) sum(is.na(x)))
+NACount <- as.data.frame(NACount)
+colnames(NACount)=c("CountOfNAs")
+NACount
+
+
+```
+### Charts
+
+
+
+## Conclusion
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
