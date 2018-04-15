@@ -1,0 +1,206 @@
+---
+title: "6306 Case Study 2 - "
+author: "Andrew Walch, Christopher Morgan, Luke Pierce, Eduardo Cantu Medellin"
+date: "April 7, 2018"
+output: 
+  html_document:
+    df_print: paged
+---
+
+```{r setup, include=FALSE}
+
+
+
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## Introduction
+
+## Exploratory Data Analysis
+
+
+A summary done on the data main data yields that some of the fields may not be needed:
+  EmployeeCount: This shows 1 for all of them
+  EmployeeNumber: This has to do with a random number
+  Over18: All of them are over 18
+  StandardHours: All records show 80 hours a week.
+
+
+
+
+
+```{r EDA}
+
+library(pROC)
+library(ROCR)
+library(randomForest)
+library(ggplot2)
+library(reshape2)
+library(caret)
+# Add libraries
+library(dplyr)
+library(RColorBrewer)
+#library(lattice)
+#library(sm)
+# Load Data
+df <- read.csv("CaseStudy2data.csv")
+dfCat <- df[,names(base::Filter(is.factor,df))]
+dfCon <- df[,c("Attrition",names(base::Filter(is.integer,df)))]
+head(dfCat)
+summary(df)
+
+
+```
+
+
+
+The data shows an inbalance in the number of people that leave the company vs people that stayed in the job. There are 237 samples with attrition 'Yes' and 1233 with attrition 'No'. The data will be down sampled for the Attrition "Yes" to match the level of Attrition "Yes"
+
+Also, the data was scanned for 'NA' values. This scanned did not show any 'NA' values.
+
+LEP: Added branch for categorical variables for histogram plots. The downSample function removes 9 categorical variables (see cleanAttDfDs before and after downSample).
+
+
+```{r NA_Scan}
+# NA per Field
+NACount <- sapply(df,function(x) sum(is.na(x)))
+NACount <- as.data.frame(NACount)
+colnames(NACount)=c("CountOfNAs")
+NACount
+
+
+#remove reduntant fields
+
+#remove reduntant fields
+# 9 - Employee Count
+# 10 - Employee Number
+# 22 - Over18
+# 27 - Standard Hours
+cleanAttDf <- df[,c(-9,-10,-22,-27)]
+colnames(cleanAttDf)
+
+# change variables as factors
+cleanAttDf$JobLevel <- as.factor(cleanAttDf$JobLevel)
+cleanAttDf$JobInvolvement <- as.factor(cleanAttDf$JobInvolvement)
+cleanAttDf$EnvironmentSatisfaction <- as.factor(cleanAttDf$EnvironmentSatisfaction)
+cleanAttDf$Education <- as.factor(cleanAttDf$Education)
+cleanAttDf$JobSatisfaction <- as.factor(cleanAttDf$JobSatisfaction)
+cleanAttDf$RelationshipSatisfaction <- as.factor(cleanAttDf$RelationshipSatisfaction)
+cleanAttDf$StockOptionLevel <- as.factor(cleanAttDf$StockOptionLevel)
+cleanAttDf$PerformanceRating <- as.factor(cleanAttDf$PerformanceRating)
+cleanAttDf$WorkLifeBalance <- as.factor(cleanAttDf$WorkLifeBalance)
+
+##### Branch for categorical histograms
+orig_cleanAttDf <- cleanAttDf
+orig_dfCat <- orig_cleanAttDf[,names(base::Filter(is.factor,orig_cleanAttDf))]
+utils::View(orig_cleanAttDf)
+utils::View(orig_dfCat)
+
+# Downsample the 'Yes' Attrition
+set.seed(7)
+cleanAttDfDs <- downSample(x=cleanAttDf, y=cleanAttDf$Attrition)
+
+cleanAttDfDs_cat <- cleanAttDfDs[,names(base::Filter(is.factor,cleanAttDfDs))]
+cleanAttDfDs_con <- cleanAttDfDs[,c("Attrition",names(base::Filter(is.integer,cleanAttDfDs)))]
+
+cleanAttDfDs_conCorr <- cor(cleanAttDfDs_con[,2:15])
+
+# Correlation heatmap
+ggplot(data=melt(cleanAttDfDs_conCorr), aes(x=Var1,y=Var2,fill=value)) + geom_tile(color="white") +
+  theme(axis.text.x = element_text(angle=90, hjust = 1)) +
+  scale_fill_gradient2(low="blue",high="Red",mid="grey" ,
+                       midpoint = 0, limit=c(-1,1), space = "Lab",
+                       name="Pearson \nCorrelation") +
+  ggtitle("Correlation Matrix for Continuous Variables") +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  )
+
+#splom(cleanAttDfDs_con[,2:15], groups=cleanAttDfDs_con$Attrition, data=cleanAttDfDs_con, panel=panel.superpose)
+
+#pairs(cleanAttDfDs_con[,2:15],col=cleanAttDfDs_con$Attrition)
+
+#histograms for categorical data using cleaned original files
+
+barPlot1 <- ggplot(data = melt(orig_dfCat[,1:7], id=c("Attrition")), mapping= aes(x=value, fill=Attrition)) + geom_histogram(stat="count")
+barPlot1 <- barPlot1 + facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
+
+barPlot2 <- ggplot(data = melt(orig_dfCat[,c(1,8:13)], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) + geom_histogram(stat="count")  
+barPlot2 <- barPlot2 + facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
+
+barPlot3 <- ggplot(data = melt(orig_dfCat[,c(1,14:17)], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +geom_histogram(stat="count")  
+barPlot3 <- barPlot3 + facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories")
+
+barPlot1
+barPlot2
+barPlot3
+
+```
+### Model
+
+```{r RForest}
+
+#use the clean data set that is down sampled.
+cleanAttDfDs
+ncol(cleanAttDfDs)
+
+clf_1 <- randomForest(cleanAttDfDs[,c(1,3:31)],cleanAttDfDs[,2])
+impClf_1<- clf_1$importance
+impClf_1
+
+barplot(sort(impClf_1[,1]), horiz = "False", col=impClf_1)
+
+
+
+#Test ROC Random Forest
+num_obs=nrow(cleanAttDfDs)
+
+train_idx <- sample(c(1:num_obs),size=num_obs*0.7,replace = FALSE)
+
+clf_2 = randomForest(cleanAttDfDs[train_idx,c(1,3:31)],cleanAttDfDs[train_idx,2])
+predicAtt <- predict(clf_2,cleanAttDfDs[-train_idx,c(1,3:31)], type="prob" )
+plot(roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1])))
+
+auc.clf2 <- roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1]),auc=TRUE)
+auc.clf2$auc
+
+nloops <- 100
+cv.aucs <-c()
+cv.top3pred <- c()
+for (i in 1:nloops){
+  train_idx <- sample(c(1:num_obs),size=num_obs*0.7,replace = FALSE)
+  clf_3 = randomForest(cleanAttDfDs[train_idx,c(1,3:31)],cleanAttDfDs[train_idx,2])
+  predicAtt <- predict(clf_3,cleanAttDfDs[-train_idx,c(1,3:31)], type="prob" )
+  auc.clf3 <- roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1]),auc=TRUE)
+  #plot(roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1])))
+  cv.aucs[i]<-as.numeric(auc.clf3$auc)
+  Pred_Results <- clf_3$importance
+  sortedResults <- as.matrix(Pred_Results[order(Pred_Results[,1], decreasing = "TRUE"),])
+  Top3Pred <- rownames(sortedResults)
+  cv.top3pred<-rbind(cv.top3pred,Top3Pred[1:3])
+}
+ggplot(melt(cv.top3pred), mapping = aes(x=value)) + geom_histogram(stat = "count") + theme(axis.text.x = element_text(angle=90, hjust = 1)) 
+hist(cv.aucs)
+summary(cv.aucs)
+
+# Result plot
+
+sortedResultsHist <- as.data.frame(sortedResults)
+sortedResultsHist <- rename(sortedResultsHist, "Importance" = V1)
+sortedResultsHist["Factor"] <- rownames(sortedResultsHist)
+sortedResultsTop3 <- dplyr::slice(sortedResultsHist, 1:3)
+
+# ggplot Top 3 Factors 
+# Barplot
+ggplot(sortedResultsTop3, aes(x=Factor, fill=(Factor), y=Importance)) + geom_bar(stat = "identity")
+
+
+
+
+
+```
+
+
+## Conclusion
+
