@@ -23,7 +23,7 @@ A summary done on the data main data yields that some of the fields may not be n
   StandardHours: All records show 80 hours a week.
 
 
-
+Luke
 
 
 ```{r EDA}
@@ -79,7 +79,7 @@ cleanAttDf$WorkLifeBalance <- as.factor(cleanAttDf$WorkLifeBalance)
 
 
 # Downsample the 'Yes' Attrition
-set.seed(7)
+set.seed(15)
 cleanAttDfDs <- downSample(x=cleanAttDf, y=cleanAttDf$Attrition)
 
 cleanAttDfDs_cat <- cleanAttDfDs[,names(base::Filter(is.factor,cleanAttDfDs))]
@@ -133,7 +133,7 @@ clf_1 <- randomForest(cleanAttDfDs[,c(1,3:31)],cleanAttDfDs[,2])
 impClf_1<- clf_1$importance
 impClf_1
 
-barplot(sort(impClf_1[,1]), horiz = "False", col=impClf_1)
+#barplot(sort(impClf_1[,1]), horiz = "False", col=impClf_1)
 
 
 
@@ -149,20 +149,24 @@ plot(roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1])))
 auc.clf2 <- roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1]),auc=TRUE)
 auc.clf2$auc
 
-nloops <- 100
-cv.aucs <-c()
-cv.top3pred <- c()
-for (i in 1:nloops){
-  train_idx <- sample(c(1:num_obs),size=num_obs*0.7,replace = FALSE)
-  clf_3 = randomForest(cleanAttDfDs[train_idx,c(1,3:31)],cleanAttDfDs[train_idx,2])
-  predicAtt <- predict(clf_3,cleanAttDfDs[-train_idx,c(1,3:31)], type="prob" )
-  auc.clf3 <- roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1]),auc=TRUE)
-  #plot(roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1])))
-  cv.aucs[i]<-as.numeric(auc.clf3$auc)
-  Pred_Results <- clf_3$importance
-  sortedResults <- as.matrix(Pred_Results[order(Pred_Results[,1], decreasing = "TRUE"),])
-  Top3Pred <- rownames(sortedResults)
-  cv.top3pred<-rbind(cv.top3pred,Top3Pred[1:3])
+nDsLoop <- 50 # Number of loops of down sample the main dataset
+nloops <- 10 # Number of validation loops
+cv.aucs <-c() #initializing the area under the curve variable
+cv.top3pred <- c() #initializing the histogram for the importance factor
+for (d in 1:nDsLoop){ # downsample loop
+  cleanAttDfDs <- downSample(x=cleanAttDf, y=cleanAttDf$Attrition)
+    for (i in 1:nloops){  # validation loop
+      train_idx <- sample(c(1:num_obs),size=num_obs*0.7,replace = FALSE)
+      clf_3 = randomForest(cleanAttDfDs[train_idx,c(1,3:31)],cleanAttDfDs[train_idx,2])
+      predicAtt <- predict(clf_3,cleanAttDfDs[-train_idx,c(1,3:31)], type="prob" )
+      auc.clf3 <- roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1]),auc=TRUE)
+      #plot(roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1])))
+      cv.aucs[i]<-as.numeric(auc.clf3$auc)
+      Pred_Results <- clf_3$importance
+      sortedResults <- as.matrix(Pred_Results[order(Pred_Results[,1], decreasing = "TRUE"),])
+      Top3Pred <- rownames(sortedResults)
+      cv.top3pred<-rbind(cv.top3pred,Top3Pred[1:3])
+    }
 }
 ggplot(melt(cv.top3pred), mapping = aes(x=value)) + geom_histogram(stat = "count") + theme(axis.text.x = element_text(angle=90, hjust = 1)) 
 hist(cv.aucs)
