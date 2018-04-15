@@ -27,7 +27,7 @@ A summary done on the data main data yields that some of the fields may not be n
 
 
 ```{r EDA}
-#library(pROC)
+library(pROC)
 library(ROCR)
 library(randomForest)
 library(ggplot2)
