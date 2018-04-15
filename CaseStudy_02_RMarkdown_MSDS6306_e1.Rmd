@@ -58,7 +58,7 @@ The data shows an inbalance in the number of people that leave the company vs pe
 
 Also, the data was scanned for 'NA' values. This scanned did not show any 'NA' values.
 
-LEP: Added branch for categorical variables for histogram plots. The downSample function removes 9 categorical variables (see cleanAttDfDs vs. )
+LEP: Added branch for categorical variables for histogram plots. The downSample function removes 9 categorical variables (see cleanAttDfDs before and after downSample).
 
 
 ```{r NA_Scan}
