@@ -27,37 +27,31 @@ A summary done on the data main data yields that some of the fields may not be n
 
 
 ```{r EDA}
-library(pROC)
+#library(pROC)
+library(ROCR)
 library(randomForest)
 library(ggplot2)
 library(reshape2)
+library(caret)
+#library(lattice)
+#library(sm)
 # Load Data
 df <- read.csv("CaseStudy2data.csv")
-
-
 dfCat <- df[,names(base::Filter(is.factor,df))]
-
 dfCon <- df[,c("Attrition",names(base::Filter(is.integer,df)))]
 head(dfCat)
-
-
 summary(df)
-ggplot(data = melt(dfCat, id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(stat="count") + facet_grid(Attrition~variable, scales = 'free') + ggtitle("Histograms for Categorical Variables by Attrition") + theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
-
-ggplot(data = melt(dfCon[,1:6], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
-
-ggplot(data = melt(dfCon[,c(1,7:11)], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
-
-ggplot(data = melt(dfCon[,c(1,12:16)], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
-
-ggplot(data = melt(dfCon[,c(1,17:21)], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
-
-ggplot(data = melt(dfCon[,c(1,22:27)], id=c("Attrition")), mapping = aes(x = value)) + geom_histogram(bin=15) + facet_grid(Attrition~variable, scales = 'free')+ ggtitle("Histograms for Continuous Variables by Attrition")
 
 
 ```
 
+
+
+The data shows an inbalance in the number of people that leave the company vs people that stayed in the job. There are 237 samples with attrition 'Yes' and 1233 with attrition 'No'. The data will be down sampled for the Attrition "Yes" to match the level of Attrition "Yes"
+
 Also, the data was scanned for 'NA' values. This scanned did not show any 'NA' values.
+
+
 ```{r NA_Scan}
 # NA per Field
 NACount <- sapply(df,function(x) sum(is.na(x)))
@@ -66,9 +60,114 @@ colnames(NACount)=c("CountOfNAs")
 NACount
 
 
-```
-### Charts
+#remove reduntant fields
 
+
+cleanAttDf <- df[,c(-9,-10,-22,-27)]
+colnames(cleanAttDf)
+# change variables as factors
+cleanAttDf$JobLevel <- as.factor(cleanAttDf$JobLevel)
+cleanAttDf$JobInvolvement <- as.factor(cleanAttDf$JobInvolvement)
+cleanAttDf$EnvironmentSatisfaction <- as.factor(cleanAttDf$EnvironmentSatisfaction)
+cleanAttDf$Education <- as.factor(cleanAttDf$Education)
+cleanAttDf$JobSatisfaction <- as.factor(cleanAttDf$JobSatisfaction)
+cleanAttDf$RelationshipSatisfaction <- as.factor(cleanAttDf$RelationshipSatisfaction)
+cleanAttDf$StockOptionLevel <- as.factor(cleanAttDf$StockOptionLevel)
+cleanAttDf$PerformanceRating <- as.factor(cleanAttDf$PerformanceRating)
+cleanAttDf$WorkLifeBalance <- as.factor(cleanAttDf$WorkLifeBalance)
+
+
+
+# Downsample the 'Yes' Attrition
+set.seed(7)
+cleanAttDfDs <- downSample(x=cleanAttDf, y=cleanAttDf$Attrition)
+
+cleanAttDfDs_cat <- cleanAttDfDs[,names(base::Filter(is.factor,cleanAttDfDs))]
+cleanAttDfDs_con <- cleanAttDfDs[,c("Attrition",names(base::Filter(is.integer,cleanAttDfDs)))]
+
+cleanAttDfDs_conCorr <- cor(cleanAttDfDs_con[,2:15])
+
+# Correlation heatmap
+ggplot(data=melt(cleanAttDfDs_conCorr), aes(x=Var1,y=Var2,fill=value)) + geom_tile(color="white") +
+  theme(axis.text.x = element_text(angle=90, hjust = 1)) +
+  scale_fill_gradient2(low="blue",high="Red",mid="grey" ,
+                       midpoint = 0, limit=c(-1,1), space = "Lab",
+                       name="Pearson \nCorrelation") +
+  ggtitle("Correlation Matrix for Continuous Variables") +
+  theme(
+    axis.title.x = element_blank(),
+    axis.title.y = element_blank()
+  )
+
+#splom(cleanAttDfDs_con[,2:15], groups=cleanAttDfDs_con$Attrition, data=cleanAttDfDs_con, panel=panel.superpose)
+
+#pairs(cleanAttDfDs_con[,2:15],col=cleanAttDfDs_con$Attrition)
+
+#histograms for data
+barPlot1 <- ggplot(data = melt(cleanAttDfDs_cat[,1:6], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +
+  geom_histogram(stat="count")  +
+  facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
+
+barPlot2 <- ggplot(data = melt(cleanAttDfDs_cat[,c(1,7:11)], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +
+  geom_histogram(stat="count")  +
+  facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
+
+
+barPlot3 <-  ggplot(data = melt(cleanAttDfDs_cat[,c(1,12:17)], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +
+  geom_histogram(stat="count")  +
+  facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories")
+
+barPlot1
+barPlot2
+barPlot3
+```
+### Model
+
+```{r RForest}
+
+#use the clean data set that is down sampled.
+cleanAttDfDs
+ncol(cleanAttDfDs)
+
+clf_1 <- randomForest(cleanAttDfDs[,c(1,3:31)],cleanAttDfDs[,2])
+impClf_1<- clf_1$importance
+impClf_1
+
+barplot(sort(impClf_1[,1]), horiz = "False", col=impClf_1)
+
+
+
+#Test ROC Random Forest
+num_obs=nrow(cleanAttDfDs)
+
+train_idx <- sample(c(1:num_obs),size=num_obs*0.7,replace = FALSE)
+
+clf_2 = randomForest(cleanAttDfDs[train_idx,c(1,3:31)],cleanAttDfDs[train_idx,2])
+predicAtt <- predict(clf_2,cleanAttDfDs[-train_idx,c(1,3:31)], type="prob" )
+plot(roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1])))
+
+auc.clf2 <- roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1]),auc=TRUE)
+auc.clf2$auc
+
+nloops <- 100
+cv.aucs <-c()
+cv.top3pred <- c()
+for (i in 1:nloops){
+  train_idx <- sample(c(1:num_obs),size=num_obs*0.7,replace = FALSE)
+  clf_3 = randomForest(cleanAttDfDs[train_idx,c(1,3:31)],cleanAttDfDs[train_idx,2])
+  predicAtt <- predict(clf_3,cleanAttDfDs[-train_idx,c(1,3:31)], type="prob" )
+  auc.clf3 <- roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1]),auc=TRUE)
+  #plot(roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1])))
+  cv.aucs[i]<-as.numeric(auc.clf3$auc)
+  Pred_Results <- clf_3$importance
+  sortedResults <- as.matrix(Pred_Results[order(Pred_Results[,1], decreasing = "TRUE"),])
+  Top3Pred <- rownames(sortedResults)
+  cv.top3pred<-rbind(cv.top3pred,Top3Pred[1:3])
+}
+ggplot(melt(cv.top3pred), mapping = aes(x=value)) + geom_histogram(stat = "count") + theme(axis.text.x = element_text(angle=90, hjust = 1)) 
+hist(cv.aucs)
+summary(cv.aucs)
+```
 
 
 ## Conclusion
