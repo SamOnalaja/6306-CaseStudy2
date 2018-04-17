@@ -27,11 +27,21 @@ Luke
 
 
 ```{r EDA}
-library(pROC)
-library(ROCR)
-library(randomForest)
+
+library(data.table)
+library(readxl)
+library(doBy)
+library(plyr)
+library(dplyr)
 library(ggplot2)
+library(scales)
+library(RColorBrewer)
+library(colorRamps)
+library(readxl)
+library(pROC)
+library(randomForest)
 library(reshape2)
+library(forcats)
 library(caret)
 #library(lattice)
 #library(sm)
@@ -39,9 +49,8 @@ library(caret)
 df <- read.csv("CaseStudy2data.csv")
 dfCat <- df[,names(base::Filter(is.factor,df))]
 dfCon <- df[,c("Attrition",names(base::Filter(is.integer,df)))]
-head(dfCat)
-summary(df)
-
+#head(dfCat)
+summary(df) # Check if its posible to format this table in the Rmarkdown
 
 ```
 
@@ -53,11 +62,125 @@ Also, the data was scanned for 'NA' values. This scanned did not show any 'NA' v
 
 
 ```{r NA_Scan}
+
+
+
+#### Luke Code
+
+#  Clean file name (Edwardo) - cleanAttDf
+
+
+# Read xlsx file
+rawdata <- read_excel("CaseStudy2data.xlsx")
+utils::View(rawdata)
+str(rawdata)
+
+# Data cleaning for Analysis
+
 # NA per Field
-NACount <- sapply(df,function(x) sum(is.na(x)))
+NACount <- sapply(rawdata,function(x) sum(is.na(x)))
 NACount <- as.data.frame(NACount)
 colnames(NACount)=c("CountOfNAs")
 NACount
+
+
+#remove reduntant fields
+# 9 - Employee Count
+# 10 - Employee Number
+# 22 - Over18
+# 27 - Standard Hours
+
+rawdata <- rawdata[,c(-9,-10,-22,-27)]
+colnames(rawdata)
+
+# Convert numeric categorical variables to character 
+rawdata$Education <- mapvalues(rawdata$Education, from=c(1, 2, 3, 4, 5), to=c('Below College', 'College', 'Bachelor', 'Master', 'Doctor'))
+rawdata$EnvironmentSatisfaction <- mapvalues(rawdata$EnvironmentSatisfaction, from=c(1, 2, 3, 4), to=c('Low', 'Medium', 'High', 'Very High'))
+rawdata$JobInvolvement <- mapvalues(rawdata$JobInvolvement, from=c(1, 2, 3, 4), to=c('Low', 'Medium', 'High', 'Very High'))
+rawdata$JobSatisfaction <- mapvalues(rawdata$JobSatisfaction, from=c(1, 2, 3, 4), to=c('Low', 'Medium', 'High', 'Very High'))
+rawdata$PerformanceRating <- mapvalues(rawdata$PerformanceRating, from=c(3, 4), to=c('Excellent', 'Outstanding'))
+rawdata$RelationshipSatisfaction <- mapvalues(rawdata$RelationshipSatisfaction, from=c(1, 2, 3, 4), to=c('Low', 'Medium', 'High', 'Very High'))
+rawdata$WorkLifeBalance <- mapvalues(rawdata$WorkLifeBalance, from=c(1, 2, 3, 4), to=c('Bad', 'Good', 'Better', 'Best'))
+
+# Convert character data to factor data
+rawdata$Attrition <- as.factor(rawdata$Attrition)
+rawdata$BusinessTravel <- as.factor(rawdata$BusinessTravel)
+rawdata$Department <- as.factor(rawdata$Department)
+rawdata$Education <- as.factor(rawdata$Education)
+rawdata$EducationField <- as.factor(rawdata$EducationField)
+rawdata$EnvironmentSatisfaction <- as.factor(rawdata$EnvironmentSatisfaction)
+rawdata$JobInvolvement <- as.factor(rawdata$JobInvolvement)
+rawdata$Gender <- as.factor(rawdata$Gender)
+rawdata$JobRole <- as.factor(rawdata$JobRole)
+rawdata$JobSatisfaction <- as.factor(rawdata$JobSatisfaction)
+rawdata$MaritalStatus <- as.factor(rawdata$MaritalStatus)
+rawdata$OverTime <- as.factor(rawdata$OverTime)
+rawdata$PerformanceRating <- as.factor(rawdata$PerformanceRating)
+rawdata$RelationshipSatisfaction <- as.factor(rawdata$RelationshipSatisfaction)
+rawdata$WorkLifeBalance <- as.factor(rawdata$WorkLifeBalance)
+
+cleanAttDf <- rawdata
+header <- colnames(cleanAttDf, do.NULL = TRUE, prefix = "col")
+utils::View(header)
+
+# Exploratory Analysis ======================================================================================================
+
+
+
+AttritionTable <- table(cleanAttDf$Attrition)
+PT <- prop.table(AttritionTable)
+PT
+
+# ggplot Bar Plot (percentage)
+g <- ggplot(cleanAttDf, aes(x = Attrition)) + geom_bar(aes(fill=Attrition, y=100*(..count..)/sum(..count..))) 
+AttritionBCP <- g + xlab("Attrition") + ylab("Percent") + ggtitle("Total Attrition") 
+AttritionBCP
+
+## Attrition rate: 16%
+
+# ===Age=====================================================================================================================================================
+
+## Subset Age by 5, categorical vector
+# 18-22,23-27,28-32,33-37,38-42,43-47,48-52,53+
+cleanAttDf$Ageby5 <- findInterval(cleanAttDf$Age, c(18, 23, 28, 33, 38, 43, 48, 53))
+cleanAttDf$Ageby5 <- mapvalues(cleanAttDf$Ageby5, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('18-22', '23-27', '28-32', '33-37', '38-42', '43-47','48-52','53+'))
+cleanAttDf$Ageby5 <- as.factor(cleanAttDf$Ageby5)
+
+# Generate property summary for variable
+AgeTable <- table(cleanAttDf$Ageby5, cleanAttDf$Attrition)
+PT <- prop.table(AgeTable)
+PTdf <- as.data.frame(PT)
+colnames(PTdf)[c(1,2)] <- c("Age" , "Attrition" )
+PT
+
+# Plot Age Range vs, Percent Attrition 
+g <- ggplot(PTdf, aes(x = Age, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+AgeBP <- g + xlab("Age") + ylab("Percent") + ggtitle("Attrition by Age")
+AgeBP
+
+## Notes
+# 47% Attrition in the 18-23 age bracket
+
+# ===Business Travel=====================================================================================================================================================
+
+# Generate property summary for variable
+BusinessTravelTable <- table(cleanAttDf$BusinessTravel, cleanAttDf$Attrition)
+PT <- prop.table(BusinessTravelTable)
+PTdf <- as.data.frame(PT)
+#PTdf <- rename(PTdf, c("Var1"="BusinessTravel","Var2" = "Attrition" ))  #### Knit Does not like this 
+colnames(PTdf)[c(1,2)] <- c("BusinessTravel","Attrition" )
+PT
+
+# Plot Marital Status vs, Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(BusinessTravel, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+BusinessTravelBP <- g + xlab("Business Travel") + ylab("Percent") + ggtitle("Attrition vs. Business Travel")
+BusinessTravelBP
+
+## Notes
+# Minimal Factor
+
+### Luke Code End
+
 
 
 #remove reduntant fields
@@ -66,15 +189,15 @@ NACount
 cleanAttDf <- df[,c(-9,-10,-22,-27)]
 colnames(cleanAttDf)
 # change variables as factors
-cleanAttDf$JobLevel <- as.factor(cleanAttDf$JobLevel)
-cleanAttDf$JobInvolvement <- as.factor(cleanAttDf$JobInvolvement)
-cleanAttDf$EnvironmentSatisfaction <- as.factor(cleanAttDf$EnvironmentSatisfaction)
-cleanAttDf$Education <- as.factor(cleanAttDf$Education)
-cleanAttDf$JobSatisfaction <- as.factor(cleanAttDf$JobSatisfaction)
-cleanAttDf$RelationshipSatisfaction <- as.factor(cleanAttDf$RelationshipSatisfaction)
-cleanAttDf$StockOptionLevel <- as.factor(cleanAttDf$StockOptionLevel)
-cleanAttDf$PerformanceRating <- as.factor(cleanAttDf$PerformanceRating)
-cleanAttDf$WorkLifeBalance <- as.factor(cleanAttDf$WorkLifeBalance)
+# cleanAttDf$JobLevel <- as.factor(cleanAttDf$JobLevel)
+# cleanAttDf$JobInvolvement <- as.factor(cleanAttDf$JobInvolvement)
+# cleanAttDf$EnvironmentSatisfaction <- as.factor(cleanAttDf$EnvironmentSatisfaction)
+# cleanAttDf$Education <- as.factor(cleanAttDf$Education)
+# cleanAttDf$JobSatisfaction <- as.factor(cleanAttDf$JobSatisfaction)
+# cleanAttDf$RelationshipSatisfaction <- as.factor(cleanAttDf$RelationshipSatisfaction)
+# cleanAttDf$StockOptionLevel <- as.factor(cleanAttDf$StockOptionLevel)
+# cleanAttDf$PerformanceRating <- as.factor(cleanAttDf$PerformanceRating)
+# cleanAttDf$WorkLifeBalance <- as.factor(cleanAttDf$WorkLifeBalance)
 
 
 
@@ -104,38 +227,69 @@ ggplot(data=melt(cleanAttDfDs_conCorr), aes(x=Var1,y=Var2,fill=value)) + geom_ti
 #pairs(cleanAttDfDs_con[,2:15],col=cleanAttDfDs_con$Attrition)
 
 #histograms for data
-barPlot1 <- ggplot(data = melt(cleanAttDfDs_cat[,1:6], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +
-  geom_histogram(stat="count")  +
-  facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
-
-barPlot2 <- ggplot(data = melt(cleanAttDfDs_cat[,c(1,7:11)], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +
-  geom_histogram(stat="count")  +
-  facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
-
-
-barPlot3 <-  ggplot(data = melt(cleanAttDfDs_cat[,c(1,12:17)], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +
-  geom_histogram(stat="count")  +
-  facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories")
-
-barPlot1
-barPlot2
-barPlot3
+# barPlot1 <- ggplot(data = melt(cleanAttDfDs_cat[,1:6], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +
+#   geom_histogram(stat="count")  +
+#   facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
+# 
+# barPlot2 <- ggplot(data = melt(cleanAttDfDs_cat[,c(1,7:11)], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +
+#   geom_histogram(stat="count")  +
+#   facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories") 
+# 
+# 
+# barPlot3 <-  ggplot(data = melt(cleanAttDfDs_cat[,c(1,12:17)], id=c("Attrition")), mapping= aes(x=value, fill=Attrition) ) +
+#   geom_histogram(stat="count")  +
+#   facet_grid(Attrition~variable, scales = "free")+ theme(axis.text.x = element_text(angle=90, hjust = 1)) + xlab("Categories")
+# 
+# barPlot1
+# barPlot2
+# barPlot3
 ```
-### Model
+
+
+
+### Problem
+DDS Analytics specializes in talent management solutions for Fortune 1000 companies. This company has provided a dataset (CaseStudy2Data.zip) and would like to identify the factors that lead to attrition. The company is interested to know what are the Top three factors that contribute to turnover.
+
+### Model - Random Forest
+The Top 3 factors that affect attrition would be treated as a classification problem. The Random Forrest algorithm will be used to classify based on the explanatory variables the attrition outcome. The random forest fit model will provide the important factor for the classifying model.
+
+
+#### Intial Random Forest Fit
+
+As indicated in the EDA, the data is not balanced. On this initial fit of the model, a random downsample will be used to fit the initial classification model.
+
+The initial Random Forest suggests that the Top 3 factors are:
+ * Monthly Income
+ * Age
+ * Jobe Role
+
 
 ```{r RForest}
 
 #use the clean data set that is down sampled.
-cleanAttDfDs
-ncol(cleanAttDfDs)
+#cleanAttDfDs
+#ncol(cleanAttDfDs)
 
+# Initial Random Forrest Classifier
 clf_1 <- randomForest(cleanAttDfDs[,c(1,3:31)],cleanAttDfDs[,2])
 impClf_1<- clf_1$importance
-impClf_1
+
+impFactors <- as.data.frame(sort(impClf_1[,1], decreasing=TRUE))
+colnames(impFactors)<- "MeanDecreaseGini"
+impFactors
 
 #barplot(sort(impClf_1[,1]), horiz = "False", col=impClf_1)
+```
+
+#### Validation
 
 
+As a way to validate the initial fit the downsampled data will be randomly split into training and test data. The proportion is 70% Train and 30% Test.
+
+The model using 70% still shows the initial three top factors.
+
+
+```{r ROCRandomF}
 
 #Test ROC Random Forest
 num_obs=nrow(cleanAttDfDs)
@@ -148,7 +302,20 @@ plot(roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1])))
 
 auc.clf2 <- roc(cleanAttDfDs[-train_idx,2], as.numeric(predicAtt[,1]),auc=TRUE)
 auc.clf2$auc
+impClf_2<- clf_2$importance
+impFactors2 <- as.data.frame(sort(impClf_2[,1], decreasing=TRUE))
+colnames(impFactors2)<- "MeanDecreaseGini"
+impFactors2
 
+```
+
+
+This section will have two loops for the next level of validation. The outer loop will variate the down sample of the data to understand if by selecting random samples from the Attrition "No" values would the results change. The inner loop will variate the training and test sets. In each iteration, the AUC and Top 3 factors will be captured and then present histograms of the results.
+
+The results show that the most important factor is the Monthly Income. This factor shows every single time as part of the top three factors for the different iterations. The second most important is Job Role, only a few instances it was not part of the top 3. Last, the third most important factor that affects attrition is Age.
+
+
+```{r LoopsByDs}
 nDsLoop <- 50 # Number of loops of down sample the main dataset
 nloops <- 10 # Number of validation loops
 cv.aucs <-c() #initializing the area under the curve variable
@@ -168,11 +335,16 @@ for (d in 1:nDsLoop){ # downsample loop
       cv.top3pred<-rbind(cv.top3pred,Top3Pred[1:3])
     }
 }
-ggplot(melt(cv.top3pred), mapping = aes(x=value)) + geom_histogram(stat = "count") + theme(axis.text.x = element_text(angle=90, hjust = 1)) 
+ggplot(melt(cv.top3pred), mapping = aes(x=value)) + geom_histogram(stat = "count") + theme(axis.text.x = element_text(angle=90, hjust = 1))
 hist(cv.aucs)
 summary(cv.aucs)
 ```
 
 
 ## Conclusion
+
+EDA observations and trends
+
+The cross-validation for the Random Forest algorithm can provide a classification model with an average AUC value of 0.79. Therefore, the model can classify the attrition with good accuracy using the provided data. It also has shown that the Top 3 most important factors in the models for classification are: Monthly Income, Job Role, and Age. These factors, in other words, affect the person’s decision to stay or move to another job. The Job Roles that have the most turn over in this data set are Laboratory Technician, Research Scientist, Sales Executive, and Sale Representative.
+
 
