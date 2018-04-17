@@ -93,8 +93,6 @@ cleanAttDf$WorkLifeBalance <- as.factor(cleanAttDf$WorkLifeBalance)
 ##### Branch for categorical histograms
 orig_cleanAttDf <- cleanAttDf
 orig_dfCat <- orig_cleanAttDf[,names(base::Filter(is.factor,orig_cleanAttDf))]
-utils::View(orig_cleanAttDf)
-utils::View(orig_dfCat)
 
 # Downsample the 'Yes' Attrition
 set.seed(7)
@@ -108,7 +106,7 @@ cleanAttDfDs_conCorr <- cor(cleanAttDfDs_con[,2:15])
 # Correlation heatmap
 ggplot(data=melt(cleanAttDfDs_conCorr), aes(x=Var1,y=Var2,fill=value)) + geom_tile(color="white") +
   theme(axis.text.x = element_text(angle=90, hjust = 1)) +
-  scale_fill_gradient2(low="blue",high="Red",mid="grey" ,
+  scale_fill_gradient2(low="purple",high="Red",mid="#fcfcfc" ,
                        midpoint = 0, limit=c(-1,1), space = "Lab",
                        name="Pearson \nCorrelation") +
   ggtitle("Correlation Matrix for Continuous Variables") +
@@ -147,9 +145,20 @@ ncol(cleanAttDfDs)
 
 clf_1 <- randomForest(cleanAttDfDs[,c(1,3:31)],cleanAttDfDs[,2])
 impClf_1<- clf_1$importance
-impClf_1
 
-barplot(sort(impClf_1[,1]), horiz = "False", col=impClf_1)
+#creates attractive random forest graph
+clfdf<-cbind(rownames(impClf_1),impClf_1)
+colnames(clfdf)<-c("variable","score")
+clfdf<-as.data.frame(clfdf,row.names = F)
+clfdf$score<-as.numeric(levels(clfdf$score))[clfdf$score]
+clfdf <- transform(clfdf, variable=reorder(clfdf$variable, -clfdf$score) ) 
+
+colourCount = length(unique(clfdf$variable))
+getPalette = colorRampPalette(brewer.pal(11, "RdYlGn"))
+
+ggplot(data=clfdf, aes(x=reorder(clfdf$variable,clfdf$score),y=clfdf$score,fill=clfdf$variable)) + geom_bar(stat="identity") + coord_flip() +
+  labs(title="Random Forest model predictive factors",x="Predictor",y="Score") + 
+  theme(plot.title = element_text(hjust = 0.3), legend.position ="none") + scale_fill_manual(values = getPalette(colourCount))
 
 
 
@@ -180,8 +189,16 @@ for (i in 1:nloops){
   Top3Pred <- rownames(sortedResults)
   cv.top3pred<-rbind(cv.top3pred,Top3Pred[1:3])
 }
-ggplot(melt(cv.top3pred), mapping = aes(x=value)) + geom_histogram(stat = "count") + theme(axis.text.x = element_text(angle=90, hjust = 1)) 
-hist(cv.aucs)
+
+ggplot(melt(cv.top3pred), mapping = aes(x=value,fill="count")) + geom_histogram(stat = "count") + 
+  theme(axis.text.x = element_text(angle=90, hjust = 1),legend.position = "none") + 
+  labs(title="Random Forest model top 3 predictor occurences",x="Predictor",y="Count") +
+  scale_fill_manual(values="#71945A")
+
+
+qplot(cv.aucs,geom="histogram",binwidth=.008,main = "Histogram for random forest model", fill=I("Blue"), col=I("Gray"), alpha=I(.8)) + geom_density(col=2)
+
+cv.aucs
 summary(cv.aucs)
 
 # Result plot
@@ -193,8 +210,9 @@ sortedResultsTop3 <- dplyr::slice(sortedResultsHist, 1:3)
 
 # ggplot Top 3 Factors 
 # Barplot
-ggplot(sortedResultsTop3, aes(x=Factor, fill=(Factor), y=Importance)) + geom_bar(stat = "identity")
-
+ggplot(sortedResultsTop3, aes(x=Factor, fill=(sortedResultsTop3$Factor), y=Importance)) + 
+  labs(title="Top 3 predictor results",x="Predictor",y="Importance") + geom_bar(stat = "identity") + 
+  theme(plot.title = element_text(hjust = 0.4), legend.position ="none") + scale_fill_manual(values=c("#5F9EA0","#4682B4","#00BFFF"))
 
 
 
