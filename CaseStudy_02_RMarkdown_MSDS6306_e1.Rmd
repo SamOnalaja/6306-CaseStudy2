@@ -40,6 +40,11 @@ library(caret)
 # Add libraries
 library(dplyr)
 library(RColorBrewer)
+library(forcats)
+library(plyr)
+library(knitr)
+library(kableExtra)
+library(data.table)
 #library(lattice)
 #library(sm)
 # Load Data
