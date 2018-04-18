@@ -124,7 +124,7 @@ AttritionBCP
 ```{r Age, echo=FALSE}
 # Subset Age by 5, categorical vector
 # 18-22,23-27,28-32,33-37,38-42,43-47,48-52,53+
-cleanAttDf$Ageby5 <- findInterval(cleanAttDf$ï..Age, c(18, 23, 28, 33, 38, 43, 48, 53))
+cleanAttDf$Ageby5 <- findInterval(cleanAttDf$Age, c(18, 23, 28, 33, 38, 43, 48, 53))
 cleanAttDf$Ageby5 <- mapvalues(cleanAttDf$Ageby5, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('18-22', '23-27', '28-32', '33-37', '38-42', '43-47','48-52','53+'))
 cleanAttDf$Ageby5 <- as.factor(cleanAttDf$Ageby5)
 
