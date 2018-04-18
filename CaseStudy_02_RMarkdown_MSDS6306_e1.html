@@ -5352,12 +5352,11 @@ ggplot(melt(cv.top3pred), mapping = aes(x=value,fill=&quot;count&quot;)) + geom_
 <pre class="r"><code># Result plot
 
 sortedResultsHist &lt;- as.data.frame(sortedResults)
-#sortedResultsHist &lt;- rename(sortedResultsHist, &quot;V1&quot;)
 sortedResultsHist[&quot;Factor&quot;] &lt;- rownames(sortedResultsHist)
 sortedResultsTop3 &lt;- dplyr::slice(sortedResultsHist, 1:3)
 
 # ggplot Top 3 Factors 
-# Barplot
+# Barplots
 
 ggplot(sortedResultsTop3, aes(x=Factor, fill=(sortedResultsTop3$Factor), y=V1)) + 
    labs(title=&quot;Top 3 predictor results&quot;,x=&quot;Predictor&quot;,y=&quot;Importance&quot;) + geom_bar(stat = &quot;identity&quot;) + 

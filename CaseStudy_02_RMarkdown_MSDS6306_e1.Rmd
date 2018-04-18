@@ -856,7 +856,7 @@ sortedResultsHist["Factor"] <- rownames(sortedResultsHist)
 sortedResultsTop3 <- dplyr::slice(sortedResultsHist, 1:3)
 
 # ggplot Top 3 Factors 
-# Barplot
+# Barplots
 
 ggplot(sortedResultsTop3, aes(x=Factor, fill=(sortedResultsTop3$Factor), y=V1)) + 
    labs(title="Top 3 predictor results",x="Predictor",y="Importance") + geom_bar(stat = "identity") + 
