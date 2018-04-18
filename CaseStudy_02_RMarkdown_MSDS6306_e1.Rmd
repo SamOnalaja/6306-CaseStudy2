@@ -1,6 +1,6 @@
 ---
 title: "6306 Case Study 2 - "
-author: "Andrew Walch, Christopher Morgan, Luke Pierce, Eduardo Cantu Medellin"
+author: "Christopher Morgan, Luke Pierce, Eduardo Cantu Medellin"
 date: "April 7, 2018"
 output: 
   html_document:
@@ -15,6 +15,9 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 ## Introduction
+Turnover of key talent can be costly and a major factor in a company’s success or failures. Fortunately, data is readily available in large quantities that can provide insight into the problem. Fixing the problem requires targeted insights, and by putting data to work, we can better understand the issue. In this report you'll find how we performed a random forest model to better understand some relationships between turnover and professional data as well. We'll also provide reference to some interesting trends in the data through exploratory analysis using grpahical tools like ggplot.
+
+
 
 ## Data Input and Cleaning
 
@@ -100,645 +103,7 @@ orig_cleanAttDf <- cleanAttDf
 orig_dfCat <- orig_cleanAttDf[,names(base::Filter(is.factor,orig_cleanAttDf))]
 ```
 
-## Exploratory Data Analysis 
 
-### Attrition Levels
-#### Total attrition levels are significant at 16%.
-
-```{r Attrition, echo=FALSE}
-
-AttritionTable <- table(cleanAttDf$Attrition)
-df <- as.data.frame(prop.table(AttritionTable))
-df <- plyr::rename(df, c("Var1"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# ggplot Bar Plot (percentage)
-g <- ggplot(cleanAttDf, aes(x = Attrition)) + geom_bar(aes(fill=Attrition, y=100*(..count..)/sum(..count..))) 
-AttritionBCP <- g + xlab("Attrition") + ylab("Percent") + ggtitle("Total Attrition") 
-AttritionBCP
-```
-### Attrition by Age
-#### Almost half (47%) of the 18-22 age bracket leave the company. There is a significant decline with increasing age.
-
-```{r Age, echo=FALSE}
-# Subset Age by 5, categorical vector
-# 18-22,23-27,28-32,33-37,38-42,43-47,48-52,53+
-cleanAttDf$Ageby5 <- findInterval(cleanAttDf$Age, c(18, 23, 28, 33, 38, 43, 48, 53))
-cleanAttDf$Ageby5 <- mapvalues(cleanAttDf$Ageby5, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('18-22', '23-27', '28-32', '33-37', '38-42', '43-47','48-52','53+'))
-cleanAttDf$Ageby5 <- as.factor(cleanAttDf$Ageby5)
-
-# Generate property summary for variable
-AgeTable <- table(cleanAttDf$Ageby5, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(AgeTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "Age", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(AgeTable))
-df <- plyr::rename(df, c("Var1"= "Age", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = Age, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-AgeBP <- g + xlab("Age") + ylab("Percent") + ggtitle("Attrition by Age")
-AgeBP
-
-```
-
-### Attrition vs. Business Travel
-#### Business Travel seems to have little correlation with attrition.
-
-```{r Business Travel, echo=FALSE}
-# Generate property summary for variable
-BusinessTravelTable <- table(cleanAttDf$BusinessTravel, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(BusinessTravelTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "BusinessTravel", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(BusinessTravelTable))
-df <- plyr::rename(df, c("Var1"= "BusinessTravel", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(PTdf$BusinessTravel, PTdf$Freq), y = (100*PTdf$Freq), fill=PTdf$Attrition)) + geom_bar(stat = "identity")
-BusinessTravelBP <- g + xlab("Business Travel") + ylab("Percent") + ggtitle("Attrition vs. Business Travel")
-BusinessTravelBP
-
-```
-### Attrition vs. Daily Compensation Rate
-#### Daily compensation rate shows some correlation with attrition.
-
-```{r Daily Rate, echo=FALSE}
-## Subset Daily Rate by 200, categorical vector
-cleanAttDf$DailyRateby200 <- findInterval(cleanAttDf$DailyRate, c(0,200,400,600,800,1000,1200,1400))
-cleanAttDf$DailyRateby200 <- mapvalues(cleanAttDf$DailyRateby200, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('0-199' ,'200-399', '400-599', '600-799', '800-999', '1000-1199', '1200-1399','1400+'))
-cleanAttDf$DailyRateby200 <- as.factor(cleanAttDf$DailyRateby200)
-
-# Generate property summary for variable
-DailyRateby200Table <- table(cleanAttDf$DailyRateby200, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(DailyRateby200Table))
-PTdf <- plyr::rename(PTdf, c("Var1"= "DailyRateby200", "Var2"= "Attrition"))
-levels(PTdf$DailyRateby200) <- c('0-199' ,'200-399', '400-599', '600-799', '800-999', '1000-1199', '1200-1399','1400+')
-df <- prop.table(DailyRateby200Table)
-
-kable(PTdf, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = (DailyRateby200), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-DailyRateby200BP <- g + xlab("Daily Rate ($)") + ylab("Percent") + ggtitle("Attrition vs.Daily Rate")
-DailyRateby200BP
-
-```
-### Attrition by Department
-#### Proportionally, HR shows a higher rate of attrition, but the employee counts are low.
-
-```{r Department, echo=FALSE}
-# Generate property summary for variable
-DepartmentTable <- table(cleanAttDf$Department, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(DepartmentTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "Department", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(BusinessTravelTable))
-df <- plyr::rename(df, c("Var1"= "Department", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(Department, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-DepartmentBP <- g + xlab("Department") + ylab("Percent") + ggtitle("Attrition by Department")
-DepartmentBP
-
-```
-### Attrition vs. Distance From Home
-#### Distance from home does not seem to correlate with attrition.
-
-```{r DistanceFromHome, echo=FALSE}
-
-## Subset Distance by 5, categorical vector
-# '1-5', '6-10', '11-15', '16-20', '21-25', '25+' 
-cleanAttDf$DistanceFromHomeby5 <- findInterval(cleanAttDf$DistanceFromHome, c(0, 5, 10, 15, 20, 25))
-cleanAttDf$DistanceFromHomeby5 <- mapvalues(cleanAttDf$DistanceFromHomeby5, from=c(1, 2, 3, 4, 5, 6), to=c('01-05', '06-10', '11-15', '16-20', '21-25', '25+'))
-cleanAttDf$DistanceFromHomeby5 <- as.factor(cleanAttDf$DistanceFromHomeby5)
-
-# Generate property summary for variable
-DistanceFromHomeby5Table <- table(cleanAttDf$DistanceFromHomeby5, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(DistanceFromHomeby5Table))
-PTdf <- plyr::rename(PTdf, c("Var1"= "DistanceFromHomeby5", "Var2"= "Attrition"))
-df <- prop.table(DistanceFromHomeby5Table)
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = DistanceFromHomeby5, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-DistanceFromHomeby5BP <- g + xlab("Distance From Home(miles)") + ylab("Percent") + ggtitle("Attrition vs. Distance From Home")
-DistanceFromHomeby5BP
-
-```
-### Attrition vs. Education
-#### Education has little influence on attrition.
-
-```{r Education, echo=FALSE}
-# Generate property summary for variable
-EducationTable <- table(cleanAttDf$Education, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(EducationTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "Education", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(EducationTable))
-df <- plyr::rename(df, c("Var1"= "Education", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(Education, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-EducationBP <- g + xlab("Education") + ylab("Percent") + ggtitle("Attrition vs. Education")
-EducationBP
-
-```
-
-### Attrition vs. Education Field
-#### Education Field also has little influence on attrition.
-
-```{r EducationField, echo=FALSE}
-# Generate property summary for variable
-EducationFieldTable <- table(cleanAttDf$EducationField, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(EducationFieldTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "EducationField", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(EducationFieldTable))
-df <- plyr::rename(df, c("Var1"= "EducationField", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(EducationField, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-BusinessTravelBP <- g + xlab("Education Field") + ylab("Percent") + ggtitle("Attrition vs. Education Field")
-BusinessTravelBP
-
-```
-### Attrition vs. Environment Satisfaction
-#### Low Environment Satisfaction seems to have a small effect on attrition.
-
-```{r Environment Satisfaction, echo=FALSE}
-# Generate property summary for variable
-EnvironmentSatisfactionTable <- table(cleanAttDf$EnvironmentSatisfaction, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(EnvironmentSatisfactionTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "EnvironmentSatisfaction", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(EnvironmentSatisfactionTable))
-df <- plyr::rename(df, c("Var1"= "EnvironmentSatisfaction", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(EnvironmentSatisfaction, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-EnvironmentSatisfactionBP <- g + xlab("Environment Satisfaction") + ylab("Percent") + ggtitle("Attrition vs. Environment Satisfaction")
-EnvironmentSatisfactionBP
-
-```
-
-### Attrition by Gender
-#### Gender seems to have little influence on attrition.
-
-```{r Gender, echo=FALSE}
-# Generate property summary for variable
-GenderTable <- table(cleanAttDf$Gender, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(GenderTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "Gender", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(GenderTable))
-df <- plyr::rename(df, c("Var1"= "Gender", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(Gender, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-GenderBP <- g + xlab("Gender") + ylab("Percent") + ggtitle("Attrition by Gender")
-GenderBP
-
-```
-
-### Attrition vs. Hourly Rate
-#### Lower hourly rates seem to have influence on increased attrition.
-
-```{r Hourly Rate, echo=FALSE}
-
-## Subset Hourly Rate by 200, categorical vector
-cleanAttDf$HourlyRateby10 <- findInterval(cleanAttDf$HourlyRate, c(30, 40, 50, 60, 70, 80, 90))
-cleanAttDf$HourlyRateby10 <- mapvalues(cleanAttDf$HourlyRateby10, from=c(1, 2, 3, 4, 5, 6, 7), to=c('30-39' ,'40-49', '50-59', '60-69', '70-79', '80-89', '90-100'))
-cleanAttDf$HourlyRateby10 <- as.factor(cleanAttDf$HourlyRateby10)
-
-# Generate property summary for variable
-HourlyRateby10Table <- table(cleanAttDf$HourlyRateby10, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(HourlyRateby10Table))
-PTdf <- plyr::rename(PTdf, c("Var1"= "HourlyRateby10", "Var2"= "Attrition"))
-levels(PTdf$HourlyRateby10) <- c('30-39' ,'40-49', '50-59', '60-69', '70-79', '80-89', '90-100')
-df <- prop.table(HourlyRateby10Table)
-
-kable(PTdf, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = HourlyRateby10, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-HourlyRateby10BP <- g + xlab("Hourly Rate") + ylab("Percent") + ggtitle("Attrition vs. Hourly Rate")
-HourlyRateby10BP
-
-```
-### Attrition vs. Job Involvement
-#### Low Job Involvement does seem to correlate with increased attrition.
-
-```{r Job Involvement, echo=FALSE}
-# Generate property summary for variable
-JobInvolvementTable <- table(cleanAttDf$JobInvolvement, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(JobInvolvementTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "JobInvolvement", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(JobInvolvementTable))
-df <- plyr::rename(df, c("Var1"= "JobInvolvement", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(JobInvolvement, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-JobInvolvementBP <- g + xlab("Job Involvement") + ylab("Percent") + ggtitle("Attrition vs. Job Involvement")
-JobInvolvementBP
-
-```
-
-### Attrition vs. Job Level
-####  Low Job Level does seem correlated with increased attrition.
-
-```{r Job Level, echo=FALSE}
-# Generate property summary for variable
-JobLevelTable <- table(cleanAttDf$JobLevel, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(JobLevelTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "JobLevel", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(JobLevelTable))
-df <- plyr::rename(df, c("Var1"= "JobLevel", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(JobLevel, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-JobLevelBP <- g + xlab("Job Level") + ylab("Percent") + ggtitle("Attrition vs. Job Level")
-JobLevelBP
-
-```
-
-### Attrition vs. Job Role
-#### Lab technicians and Sales Representatives seem somewhat more prone to increased attrition.
-
-```{r Job Role, echo=FALSE}
-# Generate property summary for variable
-JobRoleTable <- table(cleanAttDf$JobRole, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(JobRoleTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "JobRole", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(JobRoleTable))
-df <- plyr::rename(df, c("Var1"= "JobRole", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(JobRole, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-g <- g + xlab("Job Role") + ylab("Percent") + ggtitle("Attrition vs. Job Role")
-JobRoleBP <- g + theme(axis.text.x = element_text(angle = 90, hjust = 1))
-JobRoleBP
-
-```
-
-### Attrition vs. Job Satisfaction
-#### Job Satisfaction does seem correlated with increased attrition.
-
-```{r Job Satisfaction, echo=FALSE}
-# Generate property summary for variable
-JobSatisfactionTable <- table(cleanAttDf$JobSatisfaction, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(JobSatisfactionTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "JobSatisfaction", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(JobSatisfactionTable))
-df <- plyr::rename(df, c("Var1"= "JobSatisfaction", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(JobSatisfaction, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-JobSatisfactionBP <- g + xlab("Job Satisfaction") + ylab("Percent") + ggtitle("Attrition vs. Job Satisfaction")
-JobSatisfactionBP
-
-```
-
-### Attrition vs. Marital Status
-#### Singles seem somewhat more prone to increased attrition, perhaps due to younger age.
-
-```{r Marital Status, echo=FALSE}
-# Generate property summary for variable
-MaritalStatusTable <- table(cleanAttDf$MaritalStatus, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(MaritalStatusTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "MaritalStatus", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(MaritalStatusTable))
-df <- plyr::rename(df, c("Var1"= "MaritalStatus", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(MaritalStatus, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-MaritalStatusBP <- g + xlab("Marital Status") + ylab("Percent") + ggtitle("Attrition vs. Marital Status")
-MaritalStatusBP
-
-```
-
-### Attrition vs. Number Companies Worked
-#### Number Companies Worked seems to have little impact on attrition.
-
-```{r NumCompaniesWorked, echo=FALSE}
-# Generate property summary for variable
-NumCompaniesWorkedTable <- table(cleanAttDf$NumCompaniesWorked, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(NumCompaniesWorkedTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "NumCompaniesWorked", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(NumCompaniesWorkedTable))
-df <- plyr::rename(df, c("Var1"= "NumCompaniesWorked", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(NumCompaniesWorked, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-NumCompaniesWorkedBP <- g + xlab("Number Companies Worked") + ylab("Percent") + ggtitle("Attrition vs. Number Companies Worked")
-NumCompaniesWorkedBP
-
-```
-
-### Attrition vs. OverTime
-#### More overtime seems correlated with increased attrition.
-
-```{r OverTime, echo=FALSE}
-# Generate property summary for variable
-OverTimeTable <- table(cleanAttDf$OverTime, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(OverTimeTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "OverTime", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(OverTimeTable))
-df <- plyr::rename(df, c("Var1"= "OverTime", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(OverTime, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-OverTimeBP <- g + xlab("OverTime") + ylab("Percent") + ggtitle("Attrition vs. OverTime")
-OverTimeBP
-
-```
-
-### Attrition vs. Percent Salary Hike
-#### Suprisingly, salary hikes seem to have little influence on attrition.
-
-```{r Percent Salary Hike, echo=FALSE}
-# Generate property summary for variable
-PercentSalaryHikeTable <- table(cleanAttDf$PercentSalaryHike, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(PercentSalaryHikeTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "PercentSalaryHike", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(PercentSalaryHikeTable))
-df <- plyr::rename(df, c("Var1"= "PercentSalaryHike", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = (PercentSalaryHike), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-PercentSalaryHikeBP <- g + xlab("Percent Salary Hike") + ylab("Percent") + ggtitle("Attrition vs. Percent Salary Hike")
-PercentSalaryHikeBP
-
-```
-
-### Attrition vs. Performance Rating
-#### Performance Rating also seems to have little influence on attrition.
-
-```{r Performance Rating, echo=FALSE}
-# Generate property summary for variable
-PerformanceRatingTable <- table(cleanAttDf$PerformanceRating, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(PerformanceRatingTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "PerformanceRating", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(PerformanceRatingTable))
-df <- plyr::rename(df, c("Var1"= "PerformanceRating", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(PerformanceRating, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-PerformanceRatingBP <- g + xlab("Performance Rating") + ylab("Percent") + ggtitle("Attrition vs. Performance Rating")
-PerformanceRatingBP
-
-```
-
-### Attrition vs. Relationship Satisfaction
-#### Relationship Satisfaction does not seem to correlate with attrition.
-
-```{r Relationship Satisfaction, echo=FALSE}
-# Generate property summary for variable
-RelationshipSatisfactionTable <- table(cleanAttDf$RelationshipSatisfaction, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(RelationshipSatisfactionTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "RelationshipSatisfaction", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(RelationshipSatisfactionTable))
-df <- plyr::rename(df, c("Var1"= "RelationshipSatisfaction", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(RelationshipSatisfaction, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-RelationshipSatisfactionBP <- g + xlab("Relationship Satisfaction") + ylab("Percent") + ggtitle("Attrition vs. Relationship Satisfaction")
-RelationshipSatisfactionBP
-
-```
-
-### Attrition vs. Stock Option Level
-#### Stock Option Level probably reflects status and age, indirectly correlated with attrition.
-
-```{r Stock Option Level, echo=FALSE}
-# Generate property summary for variable
-StockOptionLevelTable <- table(cleanAttDf$StockOptionLevel, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(StockOptionLevelTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "StockOptionLevel", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(StockOptionLevelTable))
-df <- plyr::rename(df, c("Var1"= "StockOptionLevel", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(StockOptionLevel, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-StockOptionLevelBP <- g + xlab("Stock Option Level") + ylab("Percent") + ggtitle("Attrition vs. Stock Option Level")
-StockOptionLevelBP
-
-```
-
-### Attrition vs. Total Working Years
-#### Attrition decreases with Total Working Years and this also may be related to age.
-
-```{r Total Working Years, echo=FALSE}
-## Subset Total Working Years by 5, categorical vector
-# 0-4,5-9,10-14,15-19,20-24,25-29,30-34,35-40
-cleanAttDf$TotalWorkingYearsby5 <- findInterval(cleanAttDf$TotalWorkingYears, c(0, 5, 10, 20, 25, 30, 35, 40))
-cleanAttDf$TotalWorkingYearsby5 <- as.factor(cleanAttDf$TotalWorkingYearsby5)
-cleanAttDf$TotalWorkingYearsby5 <- mapvalues(cleanAttDf$TotalWorkingYearsby5, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('0-4', '5-9', '10-14', '15-19', '20-24', '25-29','30-34','35-40'))
-
-# Generate property summary for variable
-TotalWorkingYearsby5Table <- table(cleanAttDf$TotalWorkingYearsby5, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(TotalWorkingYearsby5Table))
-PTdf <- plyr::rename(PTdf, c("Var1"= "TotalWorkingYearsby5", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(TotalWorkingYearsby5Table))
-df <- plyr::rename(df, c("Var1"= "TotalWorkingYearsby5", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = TotalWorkingYearsby5, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-TotalWorkingYearsby5BP <- g + xlab("Total Working Years") + ylab("Percent") + ggtitle("Attrition vs. Total Working Years")
-TotalWorkingYearsby5BP
-
-```
-
-### Attrition vs. Training Times Last Year
-#### Training Times Last Year does not seem to correlate with attrition.
-
-```{r Training Times Last Year, echo=FALSE}
-# Generate property summary for variable
-TrainingTimesLastYearTable <- table(cleanAttDf$TrainingTimesLastYear, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(TrainingTimesLastYearTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "TrainingTimesLastYear", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(TrainingTimesLastYearTable))
-df <- plyr::rename(df, c("Var1"= "TrainingTimesLastYear", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = (TrainingTimesLastYear), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-TrainingTimesLastYearBP <- g + xlab("Training Times Last Year") + ylab("Percent") + ggtitle("Attrition vs. Training Times Last Year")
-TrainingTimesLastYearBP
-
-```
-
-### Attrition vs. Work Life Balance
-#### Poor Work Life Balance seem to have some influence on increased attrition.
-
-```{r Work Life Balance, echo=FALSE}
-# Generate property summary for variable
-WorkLifeBalanceTable <- table(cleanAttDf$WorkLifeBalance, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(WorkLifeBalanceTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "WorkLifeBalance", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(WorkLifeBalanceTable))
-df <- plyr::rename(df, c("Var1"= "WorkLifeBalance", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = fct_reorder(WorkLifeBalance, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-WorkLifeBalanceBP <- g + xlab("Work Life Balance") + ylab("Percent") + ggtitle("Attrition vs. Work Life Balance")
-WorkLifeBalanceBP
-
-```
-
-### Attrition vs. Years At Company
-#### Attrition decreases with Years At Company and this too may be related to age.
-
-```{r Years At Company, echo=FALSE}
-## Subset Total Working Years by 5, categorical vector
-cleanAttDf$YearsAtCompanyby5 <- findInterval(cleanAttDf$YearsAtCompany, c(0, 5, 10, 15, 20, 25, 30, 35))
-cleanAttDf$YearsAtCompanyby5 <- mapvalues(cleanAttDf$YearsAtCompanyby5, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('0-04', '05-09', '10-14', '15-19', '20-24', '25-29', '30-34', '35-40'))
-cleanAttDf$YearsAtCompanyby5 <- as.factor(cleanAttDf$YearsAtCompanyby5)
-
-# Generate property summary for variable
-YearsAtCompanyby5Table <- table(cleanAttDf$YearsAtCompanyby5, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(YearsAtCompanyby5Table))
-PTdf <- plyr::rename(PTdf, c("Var1"= "YearsAtCompanyby5", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(YearsAtCompanyby5Table))
-df <- plyr::rename(df, c("Var1"= "YearsAtCompanyby5", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = YearsAtCompanyby5, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-YearsAtCompanyby5BP <- g + xlab("Years At Company") + ylab("Percent") + ggtitle("Attrition vs. Years At Company")
-YearsAtCompanyby5BP
-
-```
-
-### Attrition vs. Years In Current Role
-#### Attrition decreases with Years In Current Role and this could be related to age.
-
-```{r Years In Current Role, echo=FALSE}
-# Generate property summary for variable
-YearsInCurrentRoleTable <- table(cleanAttDf$YearsInCurrentRole, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(YearsInCurrentRoleTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "YearsInCurrentRole", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(YearsInCurrentRoleTable))
-df <- plyr::rename(df, c("Var1"= "YearsInCurrentRole", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = (YearsInCurrentRole), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-YearsInCurrentRoleBP <- g + xlab("Years In Current Role") + ylab("Percent") + ggtitle("Attrition vs. Years In Current Role")
-YearsInCurrentRoleBP
-
-```
-
-### Attrition vs. Years Since Last Promotion
-#### Years Since Last Promotion seems to have little influence on attrition.
-
-```{r Years Since Last Promotion, echo=FALSE}
-# Generate property summary for variable
-YearsSinceLastPromotionTable <- table(cleanAttDf$YearsSinceLastPromotion, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(YearsSinceLastPromotionTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "YearsSinceLastPromotion", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(YearsSinceLastPromotionTable))
-df <- plyr::rename(df, c("Var1"= "YearsSinceLastPromotion", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = (YearsSinceLastPromotion), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-YearsSinceLastPromotionBP <- g + xlab("Years Since Last Promotion") + ylab("Percent") + ggtitle("Attrition vs. Years Since Last Promotion")
-YearsSinceLastPromotionBP
-
-```
-### Attrition vs. Years With Current Manager
-#### Years With Current Manager seems to have little influence on attrition beyond the first year.
-
-```{r Years With Current Manager, echo=FALSE}
-# Generate property summary for variable
-YearsWithCurrManagerTable <- table(cleanAttDf$YearsWithCurrManager, cleanAttDf$Attrition)
-PTdf <- as.data.frame(prop.table(YearsWithCurrManagerTable))
-PTdf <- plyr::rename(PTdf, c("Var1"= "YearsWithCurrManager", "Var2"= "Attrition"))
-df <- as.data.frame(prop.table(YearsWithCurrManagerTable))
-df <- plyr::rename(df, c("Var1"= "YearsWithCurrManager", "Var2"= "Attrition"))
-
-kable(df, "html") %>%
-  kable_styling(bootstrap_options = c("striped", "hover"))
-# Plot variable vs Attrition Percent
-g <- ggplot(PTdf, aes(x = (YearsWithCurrManager), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
-YearsWithCurrManagerBP <- g + xlab("Years With Current Manager") + ylab("Percent") + ggtitle("Attrition vs. Years With Current Manager")
-YearsWithCurrManagerBP
-
-```
 ## Model Preparation
 
 ```{r Downsample}
@@ -867,4 +232,715 @@ ggplot(sortedResultsTop3, aes(x=Factor, fill=(sortedResultsTop3$Factor), y=V1)) 
 
 
 ## Conclusion
+
+The cross-validation for the Random Forest algorithm can provide a classification model with an average AUC value of 0.79. Therefore, the model can classify the attrition with good accuracy using the provided data. It also has shown that the Top 3 most important factors in the models for classification are: Monthly Income, Job Role, and Age. These factors, in other words, affect the person's decision to stay or move to another job. The Job Roles that have the most turn over in this data set are Laboratory Technician, Research Scientist, Sales Executive, and Sale Representative.
+
+
+##Appendix
+
+## Exploratory Data Analysis 
+
+### Attrition Levels
+
+#### Total attrition levels are significant at 16%.
+
+```{r Attrition, echo=FALSE}
+
+AttritionTable <- table(cleanAttDf$Attrition)
+df <- as.data.frame(prop.table(AttritionTable))
+df <- plyr::rename(df, c("Var1"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# ggplot Bar Plot (percentage)
+g <- ggplot(cleanAttDf, aes(x = Attrition)) + geom_bar(aes(fill=Attrition, y=100*(..count..)/sum(..count..))) 
+AttritionBCP <- g + xlab("Attrition") + ylab("Percent") + ggtitle("Total Attrition") 
+AttritionBCP
+```
+
+###Attrition by Age
+
+####Almost half (47%) of the 18-22 age bracket leave the company. There is a significant decline with increasing age.
+
+```{r Age, echo=FALSE}
+# Subset Age by 5, categorical vector
+# 18-22,23-27,28-32,33-37,38-42,43-47,48-52,53+
+cleanAttDf$Ageby5 <- findInterval(cleanAttDf$Age, c(18, 23, 28, 33, 38, 43, 48, 53))
+cleanAttDf$Ageby5 <- mapvalues(cleanAttDf$Ageby5, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('18-22', '23-27', '28-32', '33-37', '38-42', '43-47','48-52','53+'))
+cleanAttDf$Ageby5 <- as.factor(cleanAttDf$Ageby5)
+
+# Generate property summary for variable
+AgeTable <- table(cleanAttDf$Ageby5, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(AgeTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "Age", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(AgeTable))
+df <- plyr::rename(df, c("Var1"= "Age", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = Age, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+AgeBP <- g + xlab("Age") + ylab("Percent") + ggtitle("Attrition by Age")
+AgeBP
+
+```
+
+###Attrition vs. Business Travel
+
+####Business Travel seems to have little correlation with attrition.
+
+```{r Business Travel, echo=FALSE}
+# Generate property summary for variable
+BusinessTravelTable <- table(cleanAttDf$BusinessTravel, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(BusinessTravelTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "BusinessTravel", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(BusinessTravelTable))
+df <- plyr::rename(df, c("Var1"= "BusinessTravel", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(PTdf$BusinessTravel, PTdf$Freq), y = (100*PTdf$Freq), fill=PTdf$Attrition)) + geom_bar(stat = "identity")
+BusinessTravelBP <- g + xlab("Business Travel") + ylab("Percent") + ggtitle("Attrition vs. Business Travel")
+BusinessTravelBP
+
+```
+
+###Attrition vs. Daily Compensation Rate
+
+####Daily compensation rate shows some correlation with attrition.
+
+```{r Daily Rate, echo=FALSE}
+## Subset Daily Rate by 200, categorical vector
+cleanAttDf$DailyRateby200 <- findInterval(cleanAttDf$DailyRate, c(0,200,400,600,800,1000,1200,1400))
+cleanAttDf$DailyRateby200 <- mapvalues(cleanAttDf$DailyRateby200, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('0-199' ,'200-399', '400-599', '600-799', '800-999', '1000-1199', '1200-1399','1400+'))
+cleanAttDf$DailyRateby200 <- as.factor(cleanAttDf$DailyRateby200)
+
+# Generate property summary for variable
+DailyRateby200Table <- table(cleanAttDf$DailyRateby200, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(DailyRateby200Table))
+PTdf <- plyr::rename(PTdf, c("Var1"= "DailyRateby200", "Var2"= "Attrition"))
+levels(PTdf$DailyRateby200) <- c('0-199' ,'200-399', '400-599', '600-799', '800-999', '1000-1199', '1200-1399','1400+')
+df <- prop.table(DailyRateby200Table)
+
+kable(PTdf, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = (DailyRateby200), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+DailyRateby200BP <- g + xlab("Daily Rate ($)") + ylab("Percent") + ggtitle("Attrition vs.Daily Rate")
+DailyRateby200BP
+
+```
+
+###Attrition by Department
+
+####Proportionally, HR shows a higher rate of attrition, but the employee counts are low.
+
+```{r Department, echo=FALSE}
+# Generate property summary for variable
+DepartmentTable <- table(cleanAttDf$Department, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(DepartmentTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "Department", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(BusinessTravelTable))
+df <- plyr::rename(df, c("Var1"= "Department", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(Department, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+DepartmentBP <- g + xlab("Department") + ylab("Percent") + ggtitle("Attrition by Department")
+DepartmentBP
+
+```
+
+###Attrition vs. Distance From Home
+
+####Distance from home does not seem to correlate with attrition.
+
+```{r DistanceFromHome, echo=FALSE}
+
+## Subset Distance by 5, categorical vector
+# '1-5', '6-10', '11-15', '16-20', '21-25', '25+' 
+cleanAttDf$DistanceFromHomeby5 <- findInterval(cleanAttDf$DistanceFromHome, c(0, 5, 10, 15, 20, 25))
+cleanAttDf$DistanceFromHomeby5 <- mapvalues(cleanAttDf$DistanceFromHomeby5, from=c(1, 2, 3, 4, 5, 6), to=c('01-05', '06-10', '11-15', '16-20', '21-25', '25+'))
+cleanAttDf$DistanceFromHomeby5 <- as.factor(cleanAttDf$DistanceFromHomeby5)
+
+# Generate property summary for variable
+DistanceFromHomeby5Table <- table(cleanAttDf$DistanceFromHomeby5, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(DistanceFromHomeby5Table))
+PTdf <- plyr::rename(PTdf, c("Var1"= "DistanceFromHomeby5", "Var2"= "Attrition"))
+df <- prop.table(DistanceFromHomeby5Table)
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = DistanceFromHomeby5, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+DistanceFromHomeby5BP <- g + xlab("Distance From Home(miles)") + ylab("Percent") + ggtitle("Attrition vs. Distance From Home")
+DistanceFromHomeby5BP
+
+```
+
+###Attrition vs. Education
+
+####Education has little influence on attrition.
+
+```{r Education, echo=FALSE}
+# Generate property summary for variable
+EducationTable <- table(cleanAttDf$Education, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(EducationTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "Education", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(EducationTable))
+df <- plyr::rename(df, c("Var1"= "Education", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(Education, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+EducationBP <- g + xlab("Education") + ylab("Percent") + ggtitle("Attrition vs. Education")
+EducationBP
+
+```
+
+###Attrition vs. Education Field
+
+####Education Field also has little influence on attrition.
+
+```{r EducationField, echo=FALSE}
+# Generate property summary for variable
+EducationFieldTable <- table(cleanAttDf$EducationField, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(EducationFieldTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "EducationField", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(EducationFieldTable))
+df <- plyr::rename(df, c("Var1"= "EducationField", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(EducationField, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+BusinessTravelBP <- g + xlab("Education Field") + ylab("Percent") + ggtitle("Attrition vs. Education Field")
+BusinessTravelBP
+
+```
+
+###Attrition vs. Environment Satisfaction
+
+####Low Environment Satisfaction seems to have a small effect on attrition.
+
+```{r Environment Satisfaction, echo=FALSE}
+# Generate property summary for variable
+EnvironmentSatisfactionTable <- table(cleanAttDf$EnvironmentSatisfaction, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(EnvironmentSatisfactionTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "EnvironmentSatisfaction", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(EnvironmentSatisfactionTable))
+df <- plyr::rename(df, c("Var1"= "EnvironmentSatisfaction", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(EnvironmentSatisfaction, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+EnvironmentSatisfactionBP <- g + xlab("Environment Satisfaction") + ylab("Percent") + ggtitle("Attrition vs. Environment Satisfaction")
+EnvironmentSatisfactionBP
+
+```
+
+###Attrition by Gender
+
+####Gender seems to have little influence on attrition.
+
+```{r Gender, echo=FALSE}
+# Generate property summary for variable
+GenderTable <- table(cleanAttDf$Gender, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(GenderTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "Gender", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(GenderTable))
+df <- plyr::rename(df, c("Var1"= "Gender", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(Gender, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+GenderBP <- g + xlab("Gender") + ylab("Percent") + ggtitle("Attrition by Gender")
+GenderBP
+
+```
+
+###Attrition vs. Hourly Rate
+
+####Lower hourly rates seem to have influence on increased attrition.
+
+```{r Hourly Rate, echo=FALSE}
+
+## Subset Hourly Rate by 200, categorical vector
+cleanAttDf$HourlyRateby10 <- findInterval(cleanAttDf$HourlyRate, c(30, 40, 50, 60, 70, 80, 90))
+cleanAttDf$HourlyRateby10 <- mapvalues(cleanAttDf$HourlyRateby10, from=c(1, 2, 3, 4, 5, 6, 7), to=c('30-39' ,'40-49', '50-59', '60-69', '70-79', '80-89', '90-100'))
+cleanAttDf$HourlyRateby10 <- as.factor(cleanAttDf$HourlyRateby10)
+
+# Generate property summary for variable
+HourlyRateby10Table <- table(cleanAttDf$HourlyRateby10, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(HourlyRateby10Table))
+PTdf <- plyr::rename(PTdf, c("Var1"= "HourlyRateby10", "Var2"= "Attrition"))
+levels(PTdf$HourlyRateby10) <- c('30-39' ,'40-49', '50-59', '60-69', '70-79', '80-89', '90-100')
+df <- prop.table(HourlyRateby10Table)
+
+kable(PTdf, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = HourlyRateby10, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+HourlyRateby10BP <- g + xlab("Hourly Rate") + ylab("Percent") + ggtitle("Attrition vs. Hourly Rate")
+HourlyRateby10BP
+
+```
+
+###Attrition vs. Job Involvement
+
+####Low Job Involvement does seem to correlate with increased attrition.
+
+```{r Job Involvement, echo=FALSE}
+# Generate property summary for variable
+JobInvolvementTable <- table(cleanAttDf$JobInvolvement, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(JobInvolvementTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "JobInvolvement", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(JobInvolvementTable))
+df <- plyr::rename(df, c("Var1"= "JobInvolvement", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(JobInvolvement, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+JobInvolvementBP <- g + xlab("Job Involvement") + ylab("Percent") + ggtitle("Attrition vs. Job Involvement")
+JobInvolvementBP
+
+```
+
+###Attrition vs. Job Level
+
+####Low Job Level does seem correlated with increased attrition.
+
+```{r Job Level, echo=FALSE}
+# Generate property summary for variable
+JobLevelTable <- table(cleanAttDf$JobLevel, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(JobLevelTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "JobLevel", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(JobLevelTable))
+df <- plyr::rename(df, c("Var1"= "JobLevel", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(JobLevel, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+JobLevelBP <- g + xlab("Job Level") + ylab("Percent") + ggtitle("Attrition vs. Job Level")
+JobLevelBP
+
+```
+
+###Attrition vs. Job Role
+
+####Lab technicians and Sales Representatives seem somewhat more prone to increased attrition.
+
+```{r Job Role, echo=FALSE}
+# Generate property summary for variable
+JobRoleTable <- table(cleanAttDf$JobRole, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(JobRoleTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "JobRole", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(JobRoleTable))
+df <- plyr::rename(df, c("Var1"= "JobRole", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(JobRole, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+g <- g + xlab("Job Role") + ylab("Percent") + ggtitle("Attrition vs. Job Role")
+JobRoleBP <- g + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+JobRoleBP
+
+```
+
+###Attrition vs. Job Satisfaction
+
+####Job Satisfaction does seem correlated with increased attrition.
+
+```{r Job Satisfaction, echo=FALSE}
+# Generate property summary for variable
+JobSatisfactionTable <- table(cleanAttDf$JobSatisfaction, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(JobSatisfactionTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "JobSatisfaction", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(JobSatisfactionTable))
+df <- plyr::rename(df, c("Var1"= "JobSatisfaction", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(JobSatisfaction, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+JobSatisfactionBP <- g + xlab("Job Satisfaction") + ylab("Percent") + ggtitle("Attrition vs. Job Satisfaction")
+JobSatisfactionBP
+
+```
+
+###Attrition vs. Marital Status
+
+####Singles seem somewhat more prone to increased attrition, perhaps due to younger age.
+
+```{r Marital Status, echo=FALSE}
+# Generate property summary for variable
+MaritalStatusTable <- table(cleanAttDf$MaritalStatus, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(MaritalStatusTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "MaritalStatus", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(MaritalStatusTable))
+df <- plyr::rename(df, c("Var1"= "MaritalStatus", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(MaritalStatus, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+MaritalStatusBP <- g + xlab("Marital Status") + ylab("Percent") + ggtitle("Attrition vs. Marital Status")
+MaritalStatusBP
+
+```
+
+###Attrition vs. Number Companies Worked
+
+####Number Companies Worked seems to have little impact on attrition.
+
+```{r NumCompaniesWorked, echo=FALSE}
+# Generate property summary for variable
+NumCompaniesWorkedTable <- table(cleanAttDf$NumCompaniesWorked, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(NumCompaniesWorkedTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "NumCompaniesWorked", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(NumCompaniesWorkedTable))
+df <- plyr::rename(df, c("Var1"= "NumCompaniesWorked", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(NumCompaniesWorked, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+NumCompaniesWorkedBP <- g + xlab("Number Companies Worked") + ylab("Percent") + ggtitle("Attrition vs. Number Companies Worked")
+NumCompaniesWorkedBP
+
+```
+
+###Attrition vs. OverTime
+
+####More overtime seems correlated with increased attrition.
+
+```{r OverTime, echo=FALSE}
+# Generate property summary for variable
+OverTimeTable <- table(cleanAttDf$OverTime, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(OverTimeTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "OverTime", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(OverTimeTable))
+df <- plyr::rename(df, c("Var1"= "OverTime", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(OverTime, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+OverTimeBP <- g + xlab("OverTime") + ylab("Percent") + ggtitle("Attrition vs. OverTime")
+OverTimeBP
+
+```
+
+###Attrition vs. Percent Salary Hike
+
+####Suprisingly, salary hikes seem to have little influence on attrition.
+
+```{r Percent Salary Hike, echo=FALSE}
+# Generate property summary for variable
+PercentSalaryHikeTable <- table(cleanAttDf$PercentSalaryHike, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(PercentSalaryHikeTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "PercentSalaryHike", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(PercentSalaryHikeTable))
+df <- plyr::rename(df, c("Var1"= "PercentSalaryHike", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = (PercentSalaryHike), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+PercentSalaryHikeBP <- g + xlab("Percent Salary Hike") + ylab("Percent") + ggtitle("Attrition vs. Percent Salary Hike")
+PercentSalaryHikeBP
+
+```
+
+###Attrition vs. Performance Rating
+
+####Performance Rating also seems to have little influence on attrition.
+
+```{r Performance Rating, echo=FALSE}
+# Generate property summary for variable
+PerformanceRatingTable <- table(cleanAttDf$PerformanceRating, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(PerformanceRatingTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "PerformanceRating", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(PerformanceRatingTable))
+df <- plyr::rename(df, c("Var1"= "PerformanceRating", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(PerformanceRating, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+PerformanceRatingBP <- g + xlab("Performance Rating") + ylab("Percent") + ggtitle("Attrition vs. Performance Rating")
+PerformanceRatingBP
+
+```
+
+###Attrition vs. Relationship Satisfaction
+
+####Relationship Satisfaction does not seem to correlate with attrition.
+
+```{r Relationship Satisfaction, echo=FALSE}
+# Generate property summary for variable
+RelationshipSatisfactionTable <- table(cleanAttDf$RelationshipSatisfaction, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(RelationshipSatisfactionTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "RelationshipSatisfaction", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(RelationshipSatisfactionTable))
+df <- plyr::rename(df, c("Var1"= "RelationshipSatisfaction", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(RelationshipSatisfaction, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+RelationshipSatisfactionBP <- g + xlab("Relationship Satisfaction") + ylab("Percent") + ggtitle("Attrition vs. Relationship Satisfaction")
+RelationshipSatisfactionBP
+
+```
+
+###Attrition vs. Stock Option Level
+
+####Stock Option Level probably reflects status and age, indirectly correlated with attrition.
+
+```{r Stock Option Level, echo=FALSE}
+# Generate property summary for variable
+StockOptionLevelTable <- table(cleanAttDf$StockOptionLevel, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(StockOptionLevelTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "StockOptionLevel", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(StockOptionLevelTable))
+df <- plyr::rename(df, c("Var1"= "StockOptionLevel", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(StockOptionLevel, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+StockOptionLevelBP <- g + xlab("Stock Option Level") + ylab("Percent") + ggtitle("Attrition vs. Stock Option Level")
+StockOptionLevelBP
+
+```
+
+###Attrition vs. Total Working Years
+
+####Attrition decreases with Total Working Years and this also may be related to age.
+
+```{r Total Working Years, echo=FALSE}
+## Subset Total Working Years by 5, categorical vector
+# 0-4,5-9,10-14,15-19,20-24,25-29,30-34,35-40
+cleanAttDf$TotalWorkingYearsby5 <- findInterval(cleanAttDf$TotalWorkingYears, c(0, 5, 10, 20, 25, 30, 35, 40))
+cleanAttDf$TotalWorkingYearsby5 <- as.factor(cleanAttDf$TotalWorkingYearsby5)
+cleanAttDf$TotalWorkingYearsby5 <- mapvalues(cleanAttDf$TotalWorkingYearsby5, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('0-4', '5-9', '10-14', '15-19', '20-24', '25-29','30-34','35-40'))
+
+# Generate property summary for variable
+TotalWorkingYearsby5Table <- table(cleanAttDf$TotalWorkingYearsby5, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(TotalWorkingYearsby5Table))
+PTdf <- plyr::rename(PTdf, c("Var1"= "TotalWorkingYearsby5", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(TotalWorkingYearsby5Table))
+df <- plyr::rename(df, c("Var1"= "TotalWorkingYearsby5", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = TotalWorkingYearsby5, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+TotalWorkingYearsby5BP <- g + xlab("Total Working Years") + ylab("Percent") + ggtitle("Attrition vs. Total Working Years")
+TotalWorkingYearsby5BP
+
+```
+
+###Attrition vs. Training Times Last Year
+
+####Training Times Last Year does not seem to correlate with attrition.
+
+```{r Training Times Last Year, echo=FALSE}
+# Generate property summary for variable
+TrainingTimesLastYearTable <- table(cleanAttDf$TrainingTimesLastYear, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(TrainingTimesLastYearTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "TrainingTimesLastYear", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(TrainingTimesLastYearTable))
+df <- plyr::rename(df, c("Var1"= "TrainingTimesLastYear", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = (TrainingTimesLastYear), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+TrainingTimesLastYearBP <- g + xlab("Training Times Last Year") + ylab("Percent") + ggtitle("Attrition vs. Training Times Last Year")
+TrainingTimesLastYearBP
+
+```
+
+###Attrition vs. Work Life Balance
+
+####Poor Work Life Balance seem to have some influence on increased attrition.
+
+```{r Work Life Balance, echo=FALSE}
+# Generate property summary for variable
+WorkLifeBalanceTable <- table(cleanAttDf$WorkLifeBalance, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(WorkLifeBalanceTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "WorkLifeBalance", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(WorkLifeBalanceTable))
+df <- plyr::rename(df, c("Var1"= "WorkLifeBalance", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = fct_reorder(WorkLifeBalance, Freq), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+WorkLifeBalanceBP <- g + xlab("Work Life Balance") + ylab("Percent") + ggtitle("Attrition vs. Work Life Balance")
+WorkLifeBalanceBP
+
+```
+
+###Attrition vs. Years At Company
+
+####Attrition decreases with Years At Company and this too may be related to age.
+
+```{r Years At Company, echo=FALSE}
+## Subset Total Working Years by 5, categorical vector
+cleanAttDf$YearsAtCompanyby5 <- findInterval(cleanAttDf$YearsAtCompany, c(0, 5, 10, 15, 20, 25, 30, 35))
+cleanAttDf$YearsAtCompanyby5 <- mapvalues(cleanAttDf$YearsAtCompanyby5, from=c(1, 2, 3, 4, 5, 6, 7, 8), to=c('0-04', '05-09', '10-14', '15-19', '20-24', '25-29', '30-34', '35-40'))
+cleanAttDf$YearsAtCompanyby5 <- as.factor(cleanAttDf$YearsAtCompanyby5)
+
+# Generate property summary for variable
+YearsAtCompanyby5Table <- table(cleanAttDf$YearsAtCompanyby5, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(YearsAtCompanyby5Table))
+PTdf <- plyr::rename(PTdf, c("Var1"= "YearsAtCompanyby5", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(YearsAtCompanyby5Table))
+df <- plyr::rename(df, c("Var1"= "YearsAtCompanyby5", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = YearsAtCompanyby5, y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+YearsAtCompanyby5BP <- g + xlab("Years At Company") + ylab("Percent") + ggtitle("Attrition vs. Years At Company")
+YearsAtCompanyby5BP
+
+```
+
+###Attrition vs. Years In Current Role
+
+####Attrition decreases with Years In Current Role and this could be related to age.
+
+```{r Years In Current Role, echo=FALSE}
+# Generate property summary for variable
+YearsInCurrentRoleTable <- table(cleanAttDf$YearsInCurrentRole, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(YearsInCurrentRoleTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "YearsInCurrentRole", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(YearsInCurrentRoleTable))
+df <- plyr::rename(df, c("Var1"= "YearsInCurrentRole", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = (YearsInCurrentRole), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+YearsInCurrentRoleBP <- g + xlab("Years In Current Role") + ylab("Percent") + ggtitle("Attrition vs. Years In Current Role")
+YearsInCurrentRoleBP
+
+```
+
+###Attrition vs. Years Since Last Promotion
+
+####Years Since Last Promotion seems to have little influence on attrition.
+
+```{r Years Since Last Promotion, echo=FALSE}
+# Generate property summary for variable
+YearsSinceLastPromotionTable <- table(cleanAttDf$YearsSinceLastPromotion, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(YearsSinceLastPromotionTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "YearsSinceLastPromotion", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(YearsSinceLastPromotionTable))
+df <- plyr::rename(df, c("Var1"= "YearsSinceLastPromotion", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = (YearsSinceLastPromotion), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+YearsSinceLastPromotionBP <- g + xlab("Years Since Last Promotion") + ylab("Percent") + ggtitle("Attrition vs. Years Since Last Promotion")
+YearsSinceLastPromotionBP
+
+```
+
+###Attrition vs. Years With Current Manager
+
+####Years With Current Manager seems to have little influence on attrition beyond the first year.
+
+```{r Years With Current Manager, echo=FALSE}
+# Generate property summary for variable
+YearsWithCurrManagerTable <- table(cleanAttDf$YearsWithCurrManager, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(YearsWithCurrManagerTable))
+PTdf <- plyr::rename(PTdf, c("Var1"= "YearsWithCurrManager", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(YearsWithCurrManagerTable))
+df <- plyr::rename(df, c("Var1"= "YearsWithCurrManager", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = (YearsWithCurrManager), y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+YearsWithCurrManagerBP <- g + xlab("Years With Current Manager") + ylab("Percent") + ggtitle("Attrition vs. Years With Current Manager")
+YearsWithCurrManagerBP
+
+```
+
+###Attrition vs. Monthly income
+
+####Lower income groups appear to show a significant correlation in turnover for lower income individuals
+
+```{r Monthly Income, echo=FALSE}
+# Generate property summary for variable
+## Subset monthly income
+cleanAttDf$MonthlyIncomeBy1000 <- findInterval(cleanAttDf$MonthlyIncome, seq(0,30000,by=1000))
+cleanAttDf$MonthlyIncomeBy1000 <- mapvalues(cleanAttDf$MonthlyIncomeBy1000, from=c(2,3,4,5,6,7,8,9,10,11,12,13,14,15,16,17,18,19,20), to=c(2000,3000,4000,5000,6000,7000,8000,9000,10000,11000,12000,13000,14000,15000,16000,17000,18000,19000,20000))
+cleanAttDf$MonthlyIncomeBy1000 <- as.factor(cleanAttDf$MonthlyIncomeBy1000)
+
+# Generate property summary for variable
+MI1000Table <- table(cleanAttDf$MonthlyIncomeBy1000, cleanAttDf$Attrition)
+PTdf <- as.data.frame(prop.table(MI1000Table))
+PTdf <- plyr::rename(PTdf, c("Var1"= "MonthlyIncomeBy1000", "Var2"= "Attrition"))
+df <- as.data.frame(prop.table(MI1000Table))
+df <- plyr::rename(df, c("Var1"= "MonthlyIncomeBy1000", "Var2"= "Attrition"))
+
+kable(df, "html") %>%
+  kable_styling(bootstrap_options = c("striped", "hover"))
+
+# Plot variable vs Attrition Percent
+g <- ggplot(PTdf, aes(x = MonthlyIncomeBy1000 , y = (100*Freq), fill=Attrition)) + geom_bar(stat = "identity")
+MI1000BP <- g + xlab("Monthly income ($)") + ylab("Percent") + ggtitle("Attrition vs. Monthly Income") + theme(axis.text.x = element_text(angle = 90, hjust = 1))
+MI1000BP
+
+```
+
 
