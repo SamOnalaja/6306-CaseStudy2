@@ -43,6 +43,8 @@ library(randomForest)
 library(reshape2)
 library(forcats)
 library(caret)
+library(knitr)
+library(kableExtra)
 #library(lattice)
 #library(sm)
 # Load Data
